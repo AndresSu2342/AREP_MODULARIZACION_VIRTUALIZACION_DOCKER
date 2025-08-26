@@ -10,17 +10,39 @@ package co.edu.escuelaing.httpserver1;
 
 import java.net.*;
 import java.io.*;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Httpserverasync {
 
     /**
      * Map of registered services associated with specific routes
      */
-    public static Map<String, Service> services = new HashMap();
+    public static Map<String, Method> services = new HashMap();
+    
+    private static void loadComponents(String[] args) {
+        try {
+            Class c = Class.forName(args[0]);
+            if (c.isAnnotationPresent(RestController.class)) {
+                Method[] methods = c.getDeclaredMethods();
+                
+                for(Method m: methods){
+                    if (m.isAnnotationPresent(GetMapping.class)){
+                        String mapping = m.getAnnotation(GetMapping.class).value();
+                        services.put(mapping, m);
+                    }
+                }
+            }
+        } catch (ClassNotFoundException ex){
+            Logger.getLogger(Httpserverasync.class.getName()).log(Level.SEVERE, null, ex);
+            
+        }
+    }
 
     /**
      * Default path to static files
