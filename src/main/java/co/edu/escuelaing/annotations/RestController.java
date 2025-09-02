@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package co.edu.escuelaing.httpserver1;
+package co.edu.escuelaing.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -14,6 +14,7 @@ import java.lang.annotation.Target;
  * @author curso
  */
 @Retention(RetentionPolicy.RUNTIME)
-public @interface GetMapping {
-    public String value();
+@Target(ElementType.TYPE)
+public @interface RestController {
+    
 }

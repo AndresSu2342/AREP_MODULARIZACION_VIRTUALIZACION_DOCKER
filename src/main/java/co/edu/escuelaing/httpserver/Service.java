@@ -1,4 +1,4 @@
-package co.edu.escuelaing.httpserver1;
+package co.edu.escuelaing.httpserver;
 
 /**
  * Defines a service endpoint that can be invoked

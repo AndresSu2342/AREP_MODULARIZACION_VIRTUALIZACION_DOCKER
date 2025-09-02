@@ -1,12 +1,12 @@
-package co.edu.escuelaing.httpserver1;
+package co.edu.escuelaing.httpserver;
 
 /**
  *
  * @author
  */
-import static co.edu.escuelaing.httpserver1.Httpserverasync.get;
-import static co.edu.escuelaing.httpserver1.Httpserverasync.staticfiles;
-import static co.edu.escuelaing.httpserver1.Httpserverasync.start;
+import static co.edu.escuelaing.httpserver.Httpserverasync.get;
+import static co.edu.escuelaing.httpserver.Httpserverasync.staticfiles;
+import static co.edu.escuelaing.httpserver.Httpserverasync.start;
 
 public class WebApplication {
     public static void main(String[] args){

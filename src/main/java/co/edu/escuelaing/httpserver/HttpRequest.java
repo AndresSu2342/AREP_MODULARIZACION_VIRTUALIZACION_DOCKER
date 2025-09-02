@@ -1,6 +1,7 @@
-package co.edu.escuelaing.httpserver1;
+package co.edu.escuelaing.httpserver;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,4 +50,9 @@ public class HttpRequest {
     public String getPath() {
         return requri.getPath();
     }
+
+    public Map<String, String> getQueryParams() {
+        return Collections.unmodifiableMap(queryParams);
+    }
+
 }

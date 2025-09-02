@@ -1,12 +1,8 @@
-/*
- * Simple Asynchronous HTTP Server
- *
- * This class implements a basic asynchronous HTTP server
- * that can serve static files and handle custom services
- * mapped to specific routes.
- */
+package co.edu.escuelaing.httpserver;
 
-package co.edu.escuelaing.httpserver1;
+import co.edu.escuelaing.annotations.GetMapping;
+import co.edu.escuelaing.annotations.RequestParam;
+import co.edu.escuelaing.annotations.RestController;
 
 import java.net.*;
 import java.io.*;
@@ -22,25 +18,33 @@ public class Httpserverasync {
 
     /**
      * Map of registered services associated with specific routes
+     * Key = path, Value = Method to invoke
      */
-    public static Map<String, Method> services = new HashMap();
-    
+    public static Map<String, Method> services = new HashMap<>();
+
+    /**
+     * Map of controller instances (object) to invoke methods on
+     */
+    public static Map<String, Object> controllers = new HashMap<>();
+
     private static void loadComponents(String[] args) {
         try {
-            Class c = Class.forName(args[0]);
+            Class<?> c = Class.forName(args[0]);
             if (c.isAnnotationPresent(RestController.class)) {
+                Object controllerInstance = c.getDeclaredConstructor().newInstance();
                 Method[] methods = c.getDeclaredMethods();
-                
+
                 for(Method m: methods){
                     if (m.isAnnotationPresent(GetMapping.class)){
                         String mapping = m.getAnnotation(GetMapping.class).value();
                         services.put(mapping, m);
+                        controllers.put(mapping, controllerInstance);
+                        System.out.println("Mapped " + mapping + " -> " + m.getName());
                     }
                 }
             }
-        } catch (ClassNotFoundException ex){
+        } catch (Exception ex){
             Logger.getLogger(Httpserverasync.class.getName()).log(Level.SEVERE, null, ex);
-            
         }
     }
 
@@ -57,12 +61,13 @@ public class Httpserverasync {
     }
 
     /**
-     * Registers a service (handler) for a specific HTTP path.
-     * @param path the requested path
-     * @param s the service implementation
+     * Registers a service (legacy version with Service interface).
+     * NOTE: not used with reflection-based controllers,
+     * but kept for backward compatibility.
      */
     public static void get(String path, Service s){
-        services.put(path, s);
+        // ya no compatible directo porque services ahora guarda Method
+        throw new UnsupportedOperationException("Use @RestController with @GetMapping instead");
     }
 
     /**
@@ -78,6 +83,7 @@ public class Httpserverasync {
      * @param args program arguments
      */
     public static void start(String[] args){
+        loadComponents(args);
         runServer(args);
     }
 
@@ -108,7 +114,6 @@ public class Httpserverasync {
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
                 BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
         ){
-            String inputLine;
             String requestLine = in.readLine();
             if(requestLine == null) return;
 
@@ -121,9 +126,25 @@ public class Httpserverasync {
             String outputLine;
 
             // Check if a registered service exists for the path
-            if(services.containsKey(req.getPath())){
-                Service s = services.get(req.getPath());
-                String result = s.invoke(res, req);
+            if (services.containsKey(req.getPath())) {
+                Method m = services.get(req.getPath());
+                Object controller = controllers.get(req.getPath());
+
+                Object[] args = new Object[m.getParameterCount()];
+                java.lang.annotation.Annotation[][] paramAnnotations = m.getParameterAnnotations();
+
+                for (int i = 0; i < m.getParameterCount(); i++) {
+                    String value = null;
+                    for (java.lang.annotation.Annotation a : paramAnnotations[i]) {
+                        if (a instanceof RequestParam) {
+                            RequestParam rp = (RequestParam) a;
+                            value = req.getQueryParams().getOrDefault(rp.value(), rp.defaultValue());
+                        }
+                    }
+                    args[i] = value; // ojo: si el método espera String funciona directo
+                }
+
+                String result = (String) m.invoke(controller, args);
                 res.setBody(result);
                 outputLine = res.buildResponse();
             } else {
