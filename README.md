@@ -100,7 +100,7 @@ You need to have the following installed:
 
 ## Architecture
 
-![Architecture](https://github.com/user-attachments/assets/084fa004-77f2-4b05-92ff-72896095ac05)
+![Architecture](https://github.com/user-attachments/assets/356629ba-2cbb-48a9-966a-f1461ab441f2)
 
 ## 1. **HttpServer**
 
