@@ -4,9 +4,9 @@ package co.edu.escuelaing.httpserver;
  *
  * @author
  */
-import static co.edu.escuelaing.httpserver.Httpserverasync.get;
-import static co.edu.escuelaing.httpserver.Httpserverasync.staticfiles;
-import static co.edu.escuelaing.httpserver.Httpserverasync.start;
+import static co.edu.escuelaing.httpserver.HttpServer.get;
+import static co.edu.escuelaing.httpserver.HttpServer.staticfiles;
+import static co.edu.escuelaing.httpserver.HttpServer.start;
 
 public class WebApplication {
     public static void main(String[] args){

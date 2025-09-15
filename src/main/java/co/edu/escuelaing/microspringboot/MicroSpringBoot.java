@@ -4,7 +4,7 @@
 
 package co.edu.escuelaing.microspringboot;
 
-import co.edu.escuelaing.httpserver.Httpserverasync;
+import co.edu.escuelaing.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
@@ -12,6 +12,6 @@ import java.net.URISyntaxException;
 public class MicroSpringBoot {
 
     public static void main(String[] args) throws IOException, URISyntaxException {
-        Httpserverasync.main(args);
+        HttpServer.main(args);
     }
 }

@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Httpserverasync {
+public class HttpServer {
 
     /**
      * Map of registered services associated with specific routes
@@ -44,7 +44,7 @@ public class Httpserverasync {
                 }
             }
         } catch (Exception ex){
-            Logger.getLogger(Httpserverasync.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(HttpServer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
