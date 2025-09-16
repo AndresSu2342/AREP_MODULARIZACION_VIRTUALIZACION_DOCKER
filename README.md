@@ -187,7 +187,44 @@ Allows you to handle query parameters and default values.
 
 ## Class Diagram
 
-(https://github.com/user-attachments/assets/d86209ff-d0ae-4745-8320-85971f709633)
+![Class Diagram](https://github.com/user-attachments/assets/d86209ff-d0ae-4745-8320-85971f709633)
+
+## Deployment with Docker
+
+1. Build the Docker Image:
+
+   ```sh
+   docker build -t httpserver .
+   ```
+
+2. Run the Container
+
+   ```sh
+    docker run -d -p 35000:35000 --name httpservercontainer httpserver
+   ```
+
+3. Push to Docker Hub
+
+    ```sh
+    docker tag httpserver andressu2342/httpserver
+    docker push andressu234/httpserver:latest   
+    ```
+
+## Deploy on AWS
+
+1. On EC2 instance:
+
+   ```sh
+    sudo yum install docker
+    sudo service docker start
+    docker run -d -p 8080:6000 your-dockerhub-user/httpserver
+   ```
+
+2. Enable security group for port 45000 and access:
+
+   ```sh
+    http://ec2-54-159-4-151.compute-1.amazonaws.com:45000/
+   ```
 
 ## Deployment Video
 
