@@ -11,22 +11,26 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class HttpServer {
 
-    /**
-     * Map of registered services associated with specific routes
-     * Key = path, Value = Method to invoke
-     */
+    // --- Controllers & Services ---
     public static Map<String, Method> services = new HashMap<>();
-
-    /**
-     * Map of controller instances (object) to invoke methods on
-     */
     public static Map<String, Object> controllers = new HashMap<>();
 
+    // --- Server state ---
+    private static String staticFilesPath = System.getenv().getOrDefault("STATIC", "target/classes/webroot");
+    private static final int PORT = 35000;
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(10);
+    private static final AtomicBoolean running = new AtomicBoolean(true);
+    private static ServerSocket serverSocket;
+
+    // --- Load annotated components ---
     private static void loadComponents(String[] args) {
         try {
             Class<?> c = Class.forName(args[0]);
@@ -48,56 +52,29 @@ public class HttpServer {
         }
     }
 
-    /**
-     * Default path to static files
-     */
-    private static String staticFilesPath = "webroot";
-
-    /**
-     * Main entry point - starts the server.
-     */
     public static void main(String[] args) throws IOException, URISyntaxException {
         start(args);
     }
 
-    /**
-     * Registers a service (legacy version with Service interface).
-     * NOTE: not used with reflection-based controllers,
-     * but kept for backward compatibility.
-     */
-    public static void get(String path, Service s){
-        // ya no compatible directo porque services ahora guarda Method
-        throw new UnsupportedOperationException("Use @RestController with @GetMapping instead");
-    }
-
-    /**
-     * Configures the local path to static files.
-     * @param localFilesPath path where static files are stored
-     */
-    public static void staticfiles(String localFilesPath){
-        staticFilesPath = localFilesPath;
-    }
-
-    /**
-     * Starts the server execution.
-     * @param args program arguments
-     */
     public static void start(String[] args){
         loadComponents(args);
-        runServer(args);
+        runServer();
     }
 
-    /**
-     * Initializes and runs the HTTP server.
-     * @param args program arguments
-     */
-    private static void runServer(String[] args){
-        try(ServerSocket serverSocket = new ServerSocket(35000)){
-            boolean running = true;
-            while(running){
-                System.out.println("Ready to receive ...");
-                Socket clientSocket = serverSocket.accept();
-                handleClient(clientSocket);
+    private static void runServer(){
+        try {
+            serverSocket = new ServerSocket(PORT);
+            System.out.println("HTTP server started on port " + PORT);
+
+            while (running.get()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    threadPool.execute(() -> handleClient(clientSocket));
+                } catch (IOException e) {
+                    if (running.get()) {
+                        e.printStackTrace();
+                    }
+                }
             }
         } catch (IOException e){
             e.printStackTrace();
@@ -105,17 +82,33 @@ public class HttpServer {
     }
 
     /**
-     * Handles an individual client request.
-     * Reads the request, processes it and sends back the response.
-     * @param clientSocket the socket connected to the client
+     * Gracefully stop the server
      */
+    public static void stop() {
+        running.set(false);
+        threadPool.shutdown(); // Reject new tasks, finish current ones
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+            System.out.println("Server stopped gracefully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void handleClient(Socket clientSocket){
-        try(
+        try (
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
                 BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
-        ){
+        ) {
             String requestLine = in.readLine();
-            if(requestLine == null) return;
+            if (requestLine == null) return;
+
+            String headerLine;
+            while ((headerLine = in.readLine()) != null && !headerLine.isEmpty()) {
+                System.out.println("Header: " + headerLine);
+            }
 
             URI requri = new URI(requestLine.split(" ")[1]);
             HttpRequest req = new HttpRequest(requri);
@@ -124,8 +117,6 @@ public class HttpServer {
             System.out.println("Requested path: " + req.getPath());
 
             String outputLine;
-
-            // Check if a registered service exists for the path
             if (services.containsKey(req.getPath())) {
                 Method m = services.get(req.getPath());
                 Object controller = controllers.get(req.getPath());
@@ -141,38 +132,51 @@ public class HttpServer {
                             value = req.getQueryParams().getOrDefault(rp.value(), rp.defaultValue());
                         }
                     }
-                    args[i] = value; // ojo: si el método espera String funciona directo
+                    args[i] = value;
                 }
 
                 String result = (String) m.invoke(controller, args);
                 res.setBody(result);
                 outputLine = res.buildResponse();
             } else {
-                // If not a service, try to serve a static file
                 outputLine = serveStaticFile(req.getPath(), res);
             }
 
             out.println(outputLine);
 
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            try {
+                clientSocket.close();
+            } catch (IOException ignored) {}
         }
     }
 
-    /**
-     * Attempts to serve a static file from the configured directory.
-     * @param path the requested file path
-     * @param res the HTTP response object
-     * @return the full HTTP response as a string
-     */
     private static String serveStaticFile(String path, HttpResponse res){
         try {
-            String filePath = "target/classes" + staticFilesPath + path;
+            if (path.equals("/")) {
+                path = "/index.html";
+            }
+            String filePath = staticFilesPath + path;
             if(Files.exists(Paths.get(filePath))){
-                String mimeType = Files.probeContentType(Paths.get(filePath));
-                res.setHeader("Content-Type", mimeType != null ? mimeType : "text/plain");
+                String mimeType;
+                if (path.endsWith(".css")) {
+                    mimeType = "text/css";
+                } else if (path.endsWith(".js")) {
+                    mimeType = "application/javascript";
+                } else if (path.endsWith(".html")) {
+                    mimeType = "text/html";
+                } else {
+                    mimeType = Files.probeContentType(Paths.get(filePath));
+                    if (mimeType == null) {
+                        mimeType = "text/plain";
+                    }
+                }
+                res.setHeader("Content-Type", mimeType);
                 String body = new String(Files.readAllBytes(Paths.get(filePath)));
                 res.setBody(body);
+
                 return res.buildResponse();
             } else {
                 res.setStatus(404);
